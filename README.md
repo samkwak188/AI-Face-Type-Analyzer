@@ -1,6 +1,6 @@
 # AI Face Type Analysis 👤✨
 
-I have created a web-based application that analyzes facial features to determine your Korean face type classification using machine learning. This is a incividual project I created for fun. This project used my previous Image Crawler code to collect the data from internet. I have deployed [My website](https://myfacetype.netlify.app) on Netlify, feel free to try the face analyzation yourself! 
+I have created a web-based application that analyzes facial features to determine your Korean face type classification using machine learning. This is a incividual project I created for fun. This project used my previous Image Crawler code to collect the data from internet. I have deployed [My website](https://myfacetype.netlify.app) on Netlify, feel free to try the face analyzation yourself! (Use Chrome browser)
 
 ## Overview 🎯
 
