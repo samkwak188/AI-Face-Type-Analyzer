@@ -56,7 +56,9 @@ Last Updated: January 2025
 
 Mobile version is coming soon.
 
-Special thanks to JoCoding조코딩 on youtube for the Idea."# AI-Face-Type-Analyzer" 
+Special thanks to JoCoding조코딩 on youtube.
+
+"# AI-Face-Type-Analyzer" 
 "# AI-Face-Type-Analyzer" 
 "# Face-Type-Analyzer---Web-Application" 
 "# Face-Type-Analyzer---Web-Application" 
