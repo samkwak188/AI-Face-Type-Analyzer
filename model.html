@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Type Prediction</title>
+
+    <link rel="apple-touch-icon" sizes="57x57" href="./favicon/apple-icon-57x57.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="./favicon/apple-icon-60x60.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="./favicon/apple-icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="./favicon/apple-icon-76x76.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="./favicon/apple-icon-114x114.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="./favicon/apple-icon-120x120.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="./favicon/apple-icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="./favicon/apple-icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="./favicon/apple-icon-180x180.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="./favicon/android-icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="./favicon/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="./favicon/favicon-16x16.png">
+    <link rel="manifest" href="./favicon/manifest.json">
+    <meta name="msapplication-TileColor" content="#ffffff">
+    <meta name="msapplication-TileImage" content="/favicon/ms-icon-144x144.png">
+    <meta name="theme-color" content="#ffffff">
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="social-icons">
+        <a href="https://youtube.com" target="_blank">
+            <img src="https://cdn-icons-png.flaticon.com/512/1384/1384060.png" alt="YouTube">
+        </a>
+        <a href="https://github.com/samkwak188" target="_blank">
+            <img src="https://cdn-icons-png.flaticon.com/512/25/25231.png" alt="GitHub">
+        </a>
+    </div>
+    <div class="language-toggle">
+        <select id="languageSelect" onchange="changeLanguage(this.value)">
+            <option value="ko">한국어</option>
+            <option value="en">English</option>
+        </select>
+    </div>
+    <h1>AI가 알려주는 내 얼굴상!</h1>
+    <div id="image-preview"></div>
+    <div id="loader" class="loader"></div>
+    <div id="loader-text" style="text-align: center; margin-top: 10px; display: none;">AI가 사진을 분석중입니다</div>
+    <div class="file-upload">
+        <label for="imageUpload" class="custom-file-upload">이미지 업로드</label>
+        <input type="file" id="imageUpload" accept="image/*" onchange="handleFileSelect(this)" />
+    </div>
+    <div class="gender-title">성별을 선택하세요</div>
+    <div class="gender-toggle-container">
+        <span class="gender-label female">여자</span>
+        <input type="checkbox" id="gender" onchange="selectGender(this.checked)">
+        <label for="gender">
+            <span class="knob"><i></i></span>
+        </label>
+        <span class="gender-label male">남자</span>
+    </div>
+    <button id="startButton" onclick="predictImage()" disabled>나의 얼굴상 확인하기!</button>
+    <div id="prediction-results">
+        <div id="label-container"></div>
+        <div id="result-message"></div>
+    </div>
+    <div class="reset-container">
+        <button id="resetButton" onclick="resetPage()">다시 하기</button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    <script type="text/javascript">
+        const URL = "./my_model/";
+        let model, labelContainer, maxPredictions, selectedFile;
+
+        async function init() {
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+
+            if (labelContainer) {
+                labelContainer.innerHTML = '';
+            }
+
+            try {
+                model = await tmImage.load(modelURL, metadataURL);
+                maxPredictions = model.getTotalClasses();
+
+                labelContainer = document.getElementById("label-container");
+                for (let i = 0; i < maxPredictions; i++) {
+                    const predictionBar = document.createElement("div");
+                    predictionBar.className = "prediction-bar";
+                    predictionBar.innerHTML = `
+                        <div class="label" data-class=""></div>
+                        <div class="bar">
+                            <div class="bar-fill"></div>
+                        </div>
+                    `;
+                    labelContainer.appendChild(predictionBar);
+                }
+            } catch (error) {
+                console.error("Model initialization error:", error);
+                displayErrorMessage("모델 초기화 중 오류가 발생했습니다.");
+            }
+        }
+
+        function handleFileSelect(input) {
+            selectedFile = input.files[0];
+            if (selectedFile) {
+                document.getElementById("startButton").disabled = false;
+                showImagePreview(selectedFile);
+            }
+        }
+
+        function showImagePreview(file) {
+            const preview = document.getElementById("image-preview");
+            preview.innerHTML = "";
+            const img = document.createElement("img");
+            img.src = window.URL.createObjectURL(file);
+            img.style.maxWidth = "100%";
+            img.style.height = "auto";
+            preview.appendChild(img);
+        }
+
+        async function predictImage() {
+            try {
+                // Hide elements when prediction starts
+                document.querySelector('.file-upload').style.display = 'none';
+                document.getElementById('startButton').style.display = 'none';
+                document.querySelector('.gender-toggle-container').style.display = 'none';
+                document.querySelector('.gender-title').style.display = 'none';
+                document.querySelector('.language-toggle').style.display = 'none';  // Hide language toggle
+                
+                document.getElementById('loader').style.display = 'block';
+                document.getElementById('loader-text').style.display = 'block';
+                document.getElementById('label-container').innerHTML = '';
+                document.getElementById('result-message').innerHTML = '';
+
+                if (!model) {
+                    await init();
+                }
+
+                const image = new Image();
+                image.src = window.URL.createObjectURL(selectedFile);
+
+                image.onload = async () => {
+                    try {
+                        const prediction = await model.predict(image);
+                        if (prediction && prediction.length > 0) {
+                            displayPrediction(prediction);
+                            document.getElementById('resetButton').style.display = 'block';
+                        } else {
+                            displayErrorMessage("예측에 실패했습니다. 다시 시도해주세요.");
+                        }
+                    } catch (error) {
+                        console.error(error);
+                        displayErrorMessage("예측 중 오류가 발생했습니다.");
+                    } finally {
+                        document.getElementById('loader').style.display = 'none';
+                        document.getElementById('loader-text').style.display = 'none';
+                        window.URL.revokeObjectURL(image.src);
+                    }
+                };
+            } catch (error) {
+                console.error(error);
+                displayErrorMessage("예측 중 오류가 발생했습니다.");
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('loader-text').style.display = 'none';
+            }
+        }
+
+        function displayPrediction(prediction) {
+            const currentLang = translations[document.getElementById('languageSelect').value];
+            const resultContainer = document.getElementById('result-message');
+            resultContainer.innerHTML = '';
+
+            const existingTitles = document.querySelectorAll('.result-title');
+            existingTitles.forEach(title => title.remove());
+
+            let highestProbability = 0;
+            let highestClass = '';
+
+            const barFills = document.querySelectorAll('.bar-fill');
+            barFills.forEach(bar => {
+                bar.style.transition = 'width 4s ease-out';
+                bar.style.width = '0%';
+            });
+
+            void document.getElementById('label-container').offsetHeight;
+
+            for (let i = 0; i < maxPredictions; i++) {
+                const classPrediction = prediction[i].className;
+                const probability = prediction[i].probability * 100;
+
+                const predictionBar = labelContainer.childNodes[i];
+                const label = predictionBar.querySelector('.label');
+                const barFill = predictionBar.querySelector('.bar-fill');
+
+                label.textContent = currentLang.faceTypes[classPrediction];
+                label.style.fontSize = '14px';
+
+                requestAnimationFrame(() => {
+                    barFill.style.width = probability + '%';
+                    barFill.style.backgroundColor = getColor(i);
+                });
+
+                if (probability > highestProbability) {
+                    highestProbability = probability;
+                    highestClass = classPrediction;
+                }
+            }
+
+            const titleMessage = document.createElement('div');
+            titleMessage.className = 'result-title';
+            titleMessage.setAttribute('data-face-type', highestClass);
+            titleMessage.textContent = `${currentLang.faceTypes[highestClass]}!`;
+
+            const predictionResults = document.getElementById('prediction-results');
+            predictionResults.insertBefore(titleMessage, document.getElementById('label-container'));
+
+            const detailMessage = document.createElement('div');
+            detailMessage.className = 'result-detail';
+
+            const mainMessage = document.createElement('div');
+            mainMessage.style.fontSize = '16px';
+            mainMessage.style.marginBottom = '15px';
+            mainMessage.textContent = currentLang.descriptions[highestClass];
+
+            const celebList = document.createElement('div');
+            celebList.style.fontSize = '14px';
+            celebList.style.color = '#666666';
+            celebList.textContent = currentLang.celebs[highestClass][window.selectedGender];
+
+            detailMessage.appendChild(mainMessage);
+            detailMessage.appendChild(celebList);
+            resultContainer.appendChild(detailMessage);
+
+            setTimeout(() => {
+                const imagePreview = document.getElementById('image-preview');
+                const startPosition = window.pageYOffset;
+                const targetPosition = imagePreview.offsetTop - 20;
+                const distance = targetPosition - startPosition;
+                const duration = 2500;
+                let start = null;
+
+                function animation(currentTime) {
+                    if (start === null) start = currentTime;
+                    const timeElapsed = currentTime - start;
+                    const progress = Math.min(timeElapsed / duration, 1);
+
+                    const easing = t => t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
+
+                    window.scrollTo(0, startPosition + (distance * easing(progress)));
+
+                    if (progress < 1) {
+                        requestAnimationFrame(animation);
+                    }
+                }
+
+                requestAnimationFrame(animation);
+            }, 1000);
+        }
+
+        function getColor(index) {
+            const colors = ['#ff9800', '#f44336', '#3f51b5', '#2196f3'];
+            return colors[index % colors.length];
+        }
+
+        function displayErrorMessage(message) {
+            const existingErrors = document.querySelectorAll('.error-message');
+            existingErrors.forEach(error => error.remove());
+
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.style.color = 'red';
+            errorDiv.style.textAlign = 'center';
+            errorDiv.style.margin = '20px 0';
+            errorDiv.textContent = message;
+
+            const imagePreview = document.getElementById('image-preview');
+            imagePreview.parentNode.insertBefore(errorDiv, imagePreview.nextSibling);
+
+            document.getElementById('resetButton').style.display = 'block';
+        }
+
+        function getKoreanLabel(className) {
+            switch (className) {
+                case 'Tofu':
+                    return '두부상';
+                case 'TofuEdge':
+                    return '두부모서리상';
+                case 'Arab':
+                    return '아랍상';
+                case 'Milk':
+                    return '우유상';
+                default:
+                    return className;
+            }
+        }
+
+        function resetPage() {
+            document.querySelector('.language-toggle').style.display = 'block';
+            window.location.reload();
+        }
+
+        function selectGender(isChecked) {
+            window.selectedGender = isChecked ? 'male' : 'female';
+        }
+
+        window.selectedGender = 'female';
+
+        const translations = {
+            ko: {
+                title: "AI가 알려주는 내 얼굴상!",
+                uploadButton: "이미지 업로드",
+                genderTitle: "성별을 선택하세요",
+                genderMale: "남자",
+                genderFemale: "여자",
+                startButton: "나의 얼굴상 확인하기!",
+                resetButton: "다시 하기",
+                loading: "AI가 사진을 분석중입니다",
+                faceTypes: {
+                    'Tofu': '두부상',
+                    'TofuEdge': '두부모서리상',
+                    'Arab': '아랍상',
+                    'Milk': '우유상'
+                },
+                descriptions: {
+                    'Tofu': '나는 하얗고 뽀얀 두부상!🍮\n이목구비가 진하지 않고 전반적으로 동글동글한 귀여운 느낌🐶\n\n선하고 부드러운 청순하고 깨끗한 분위기로 어딜가나 인기쟁이~',
+                    'TofuEdge': '두부상, 아랍상? 나는 바로 요즘 대세라는 두부모서리상✨\n뽀얗지만 이목구비가 보다 뚜렷하고 날렵한게 두부 모서리와 같아서🤍두부 모서리상🤍\n\n평소엔 날카로운 아랍 인상, 근데 웃으면 바로 두부두부가 되는게 특징!',
+                    'Arab': '나는 눈코입 뚜렷한 아랍상!😎\n티존발달, 눈코입 모두 뚜렷한 정석 미남미녀~🤫🧏\n\n쌍커플이 진하고 눈썹, 속눈썹등 진하게 발달해서 굵직한 라인과 이국적인 분위기를 풍기는게 특징!',
+                    'Milk': '오밀조밀! 나는 반짝이는 우유상!🥛\n맑고 깨끗한 느낌을 풍기는 깔끔하고 조화로운 이목구비!\n\n항상 ✨반짝이는 눈✨과 선명한 얼굴선!\n\n볼살이 우유같은 희뿌연 느낌을 주는게 특징!'
+                },
+                celebs: {
+                    'Tofu': {
+                        male: '두부상 남자연예인: 장동윤, 이정하, 방탄소년단 진, 임시완, 박보검, 에릭남, 피오'
+                    },
+                    'TofuEdge': {
+                        male: '두부모서리상 남자연예인: 몬스타엑스 기현, 라이즈 성찬, NCT 정우, 샤이니 키, 변우석, EXO 백현'
+                    },
+                    'Arab': {
+                        male: '아랍상 남자연예인: 이동욱, 샤이니 민호, 신현준, 차승원, 신화 에릭, 로몬'
+                    },
+                    'Milk': {
+                        male: '우유상 남자연예인: 송중기, 장우영, 최우식, 박형식, 이제훈'
+                    }
+                }
+            },
+            en: {
+                title: "AI Face Type Analysis!",
+                uploadButton: "Upload Image",
+                genderTitle: "Select Gender",
+                genderMale: "Male",
+                genderFemale: "Female",
+                startButton: "Analyze My Face!",
+                resetButton: "Try Again",
+                loading: "AI is analyzing your photo",
+                faceTypes: {
+                    'Tofu': 'Tofu',
+                    'TofuEdge': 'Tofu Edge',
+                    'Arab': 'Hunter',
+                    'Milk': 'Milk'
+                },
+                descriptions: {
+                    'Tofu': 'I have the soft and pure Tofu face!🍮\nWith gentle features and an overall round, cute appearance🐶\n\nPure and gentle vibes make me popular everywhere~',
+                    'TofuEdge': 'Tofu or Hunter? I\'m the trending Tofu Edge type!✨\nFair complexion but with more defined features, sharp like the edge of tofu🤍\n\nLooks sharp like Hunter type normally, but becomes soft like tofu when smiling!',
+                    'Arab': 'I have distinct Hunter face type!😎\nWell-defined T-zone and facial features~🤫🧏\n\nStrong double eyelids, eyebrows, and lashes creating bold lines and exotic atmosphere!',
+                    'Milk': 'Delicate! I have the glowing Milk face!🥛\nClean and harmonious features with a clear complexion!\n\n✨Sparkling eyes✨ and clear facial lines!\n\nCheeks have that milky, translucent quality!'
+                },
+                celebs: {
+                    'Tofu': {
+                        male: 'Male celebrities: Jang Dong-yoon, Lee Jung-ha, BTS Jin, Im Si-wan, Park Bo-gum, Eric Nam, P.O',
+                        female: 'Female celebrities: Kim Go-eun, Oh My Girl Arin, LE SSERAFIM Kazuha, NewJeans Hanni'
+                    },
+                    'TofuEdge': {
+                        male: 'Male celebrities: MONSTA X KIHYUN, RAISE CHAN, NCT DONGHYUK, SHINee KEY, BAEKHYUN, EXO Baekhyun',
+                        female: 'Female celebrities: KIOF Ha-neul, Baby Monster Luka, NewJeans Minji, Go Yoon-jeong'
+                    },
+                    'Arab': {
+                        male: 'Male celebrities: Lee Dong-ook, SHINee Minho, Shin Hye-jun, Cha Seung-won, SHINee Eric, Lo Moon',
+                        female: 'Female celebrities: Kim Ji-won, TWICE Ji-hyo, NewJeans Hyein, NewJeans Daniel, aespa Ningning'
+                    },
+                    'Milk': {
+                        male: 'Male celebrities: Song Chung-gi, Jang Woo-yeong, Choi Woo-sik, Park Hyung-sik, Lee Jae-hoon',
+                        female: 'Female celebrities: aespa Winter, IU, ENMIX Bae, Jang Won-young, IZ*ONE Yuna, Go Ara'
+                    }
+                }
+            }
+        };
+
+        function changeLanguage(lang) {
+            const currentLang = translations[lang];
+            
+            
+            document.querySelector('h1').textContent = currentLang.title;
+            document.querySelector('.custom-file-upload').textContent = currentLang.uploadButton;
+            document.querySelector('.gender-title').textContent = currentLang.genderTitle;
+            document.querySelector('.gender-label.male').textContent = currentLang.genderMale;
+            document.querySelector('.gender-label.female').textContent = currentLang.genderFemale;
+            document.querySelector('#startButton').textContent = currentLang.startButton;
+            document.querySelector('#resetButton').textContent = currentLang.resetButton;
+            document.querySelector('#loader-text').textContent = currentLang.loading;
+            
+            
+            localStorage.setItem('preferredLanguage', lang);
+            
+            //update results
+            updateResults(lang);
+
+            // Update prediction bar labels if they exist
+            const predictionBars = document.querySelectorAll('.prediction-bar');
+            predictionBars.forEach(bar => {
+                const label = bar.querySelector('.label');
+                const originalClass = label.getAttribute('data-class');
+                if (originalClass) {
+                    label.textContent = currentLang.faceTypes[originalClass];
+                }
+            });
+        }
+
+        
+        function updateResults(lang) {
+            const resultTitle = document.querySelector('.result-title');
+            if (resultTitle) {
+                const faceType = resultTitle.getAttribute('data-face-type');
+                if (faceType) {
+                    const currentLang = translations[lang];
+                    resultTitle.textContent = `${currentLang.faceTypes[faceType]}!`;
+                    
+                    const resultMessage = document.querySelector('.result-message');
+                    if (resultMessage) {
+                        const gender = window.selectedGender;
+                        resultMessage.innerHTML = `
+                            ${currentLang.descriptions[faceType]}\n\n
+                            ${currentLang.celebs[faceType][gender]}
+                        `;
+                    }
+                }
+            }
+        }
+
+    
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedLang = localStorage.getItem('preferredLanguage') || 'ko';
+            document.getElementById('languageSelect').value = savedLang;
+            changeLanguage(savedLang);
+        });
+    </script>
+</body>
+
+</html>
