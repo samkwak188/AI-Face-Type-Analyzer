@@ -61,3 +61,4 @@ Special thanks to JoCoding조코딩 on youtube for the Idea."# AI-Face-Type-Anal
 "# Face-Type-Analyzer---Web-Application" 
 "# Face-Type-Analyzer---Web-Application" 
 "# Face-Type-Analyzer---Web-Application" 
+"# AI-Face-Type-Analyzer" 
