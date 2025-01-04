@@ -1,7 +1,6 @@
-# License
 
-## Project License
 MIT License
+
 
 Copyright (c) 2024 Sam Kwak
 
@@ -23,12 +22,13 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-## Third-Party Attributions
 
-### Icons and Images
+Third-Party Attributions
+
+Icons and Images
 - Social Media Icons provided by [Flaticon](https://www.flaticon.com)
 - Favicon created by [Vecteezy](https://www.vecteezy.com)
 
-### Libraries
+Libraries
 - TensorFlow.js - Apache License 2.0
 - Teachable Machine - Apache License 2.0 
